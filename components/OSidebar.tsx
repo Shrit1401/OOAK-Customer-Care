@@ -9,8 +9,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { MessageSquare, Image as ImageIcon, ChevronRight } from "lucide-react";
-import Image from "next/image";
+import { MessageSquare } from "lucide-react";
 
 const navigationItems = [
   {
@@ -46,15 +45,11 @@ const OSidebar = () => {
               <img src="/logo.svg" alt="Ooak" className="rounded" />
             </div>
           </div>
-          <SidebarTrigger className="group-data-[collapsible=icon]:hidden" />
+          <SidebarTrigger className="group-data-[collapsible=icon]:hidden cursor-pointer" />
         </div>
 
         <div className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mb-4 hidden">
-          <SidebarTrigger>
-            <button className="p-2 hover:bg-[#2a2a2a] rounded-lg">
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-            </button>
-          </SidebarTrigger>
+          <SidebarTrigger className="cursor-pointer" />
         </div>
 
         <SidebarGroup>

@@ -1,5 +1,6 @@
 "use client";
 import BottomChatBar from "@/components/BottomChatBar";
+import { generateOpenAIText } from "@/lib/ai/chat.server";
 import React, { useState } from "react";
 
 interface Message {
@@ -13,7 +14,7 @@ const HomePage = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      content: "Hello! I'm your AI assistant. How can I help you today?",
+      content: "Hello I am Ooak, can I know you're query?",
       isUser: false,
       timestamp: new Date(),
     },
@@ -21,34 +22,57 @@ const HomePage = () => {
 
   const addMessage = (content: string, isUser: boolean) => {
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       content,
       isUser,
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, newMessage]);
+    return newMessage;
   };
 
-  const handleSendMessage = (message: string, model: string) => {
+  const updateMessage = (id: string, content: string) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === id ? { ...msg, content } : msg))
+    );
+  };
+
+  const handleSendMessage = async (message: string, model: string) => {
     addMessage(message, true);
 
-    setTimeout(() => {
-      const responses = [
-        "That's an interesting question! Let me think about that...",
-        "I understand what you're asking. Here's what I can tell you...",
-        "Great question! Based on my knowledge, I'd say...",
-        "I'm processing your request. Here's my response...",
-        "Thanks for asking! Here's what I found...",
-      ];
-      const randomResponse =
-        responses[Math.floor(Math.random() * responses.length)];
-      addMessage(randomResponse, false);
-    }, 1000);
+    try {
+      const aiMessage = addMessage("", false);
+      console.log("Starting AI response generation...");
+      const stream = await generateOpenAIText(message);
+
+      const reader = stream.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedContent = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          console.log("Stream completed");
+          break;
+        }
+
+        const chunk = decoder.decode(value);
+        console.log("Received chunk:", chunk);
+        accumulatedContent += chunk;
+        updateMessage(aiMessage.id, accumulatedContent);
+      }
+    } catch (error) {
+      console.error("Error generating AI response:", error);
+      addMessage(
+        "Sorry, I encountered an error while processing your request. Please try again.",
+        false
+      );
+    }
   };
 
   return (
     <div className="min-h-screen text-gray-200">
-      <div className="max-w-4xl mx-auto pt-4 pb-32">
+      <div className="max-w-4xl mx-auto pt-4 pb-32 mb-16">
         <div className="space-y-6">
           {messages.map((message) => (
             <div

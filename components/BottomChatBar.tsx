@@ -8,11 +8,11 @@ interface BottomChatBarProps {
 
 const BottomChatBar = ({ onSendMessage }: BottomChatBarProps) => {
   const [message, setMessage] = useState("");
-  const [selectedModel, setSelectedModel] = useState("gemma3:1b");
+  const [selectedModel, setSelectedModel] = useState("GPT");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { state, isMobile } = useSidebar();
 
-  const models = ["gemma3:1b", "gemma3:2b", "gemma3:7b", "gemma3:14b"];
+  const models = ["GPT", "Gemini"];
 
   const handleSendMessage = () => {
     if (message.trim()) {
