@@ -1,23 +1,20 @@
 "use client";
 import React, { useState } from "react";
 import { useSidebar } from "@/components/ui/sidebar";
+import { CornerRightUp } from "lucide-react";
 
 interface BottomChatBarProps {
-  onSendMessage?: (message: string, model: string) => void;
+  onSendMessage?: (message: string) => void;
 }
 
 const BottomChatBar = ({ onSendMessage }: BottomChatBarProps) => {
   const [message, setMessage] = useState("");
-  const [selectedModel, setSelectedModel] = useState("GPT");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { state, isMobile } = useSidebar();
-
-  const models = ["GPT", "Gemini"];
 
   const handleSendMessage = () => {
     if (message.trim()) {
-      console.log("Sending message:", message, "with model:", selectedModel);
-      onSendMessage?.(message.trim(), selectedModel);
+      console.log("Sending message:", message, "with model:");
+      onSendMessage?.(message.trim());
       setMessage("");
     }
   };
@@ -45,67 +42,20 @@ const BottomChatBar = ({ onSendMessage }: BottomChatBarProps) => {
             className="flex-1 bg-transparent text-gray-200 placeholder-gray-400 outline-none resize-none min-h-[60px]"
           />
 
-          <div className="flex items-center justify-between">
-            <div className="relative">
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 cursor-pointer bg-[#373737] hover:bg-[#3e3e3e] px-3 py-1.5 rounded-2xl text-gray-300 text-sm transition-colors"
-              >
-                <span>{selectedModel}</span>
-                <svg
-                  className={`w-4 h-4 transition-transform ${
-                    isDropdownOpen ? "rotate-180" : ""
-                  }`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
-
-              {isDropdownOpen && (
-                <div className="absolute bottom-full cursor-pointer left-0 mb-2 bg-[#373737] rounded-md shadow-lg min-w-[120px]">
-                  {models.map((model) => (
-                    <button
-                      key={model}
-                      onClick={() => {
-                        setSelectedModel(model);
-                        setIsDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-[#3e3e3e] transition-colors ${
-                        selectedModel === model ? "text-white" : "text-gray-300"
-                      }`}
-                    >
-                      {model}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
+          <div className="flex items-center justify-end">
             <button
               onClick={handleSendMessage}
               disabled={!message.trim()}
               className="bg-white text-black hover:bg-gray-200 disabled:bg-[#373737] disabled:text-white disabled:cursor-not-allowed p-2 rounded-full transition-colors"
             >
               <svg
-                className="w-5 h-5 "
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                xmlns="http://www.w3.org/2000/svg"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                />
+                <path d="M8.99992 16V6.41407L5.70696 9.70704C5.31643 10.0976 4.68342 10.0976 4.29289 9.70704C3.90237 9.31652 3.90237 8.6835 4.29289 8.29298L9.29289 3.29298L9.36907 3.22462C9.76184 2.90427 10.3408 2.92686 10.707 3.29298L15.707 8.29298L15.7753 8.36915C16.0957 8.76192 16.0731 9.34092 15.707 9.70704C15.3408 10.0732 14.7618 10.0958 14.3691 9.7754L14.2929 9.70704L10.9999 6.41407V16C10.9999 16.5523 10.5522 17 9.99992 17C9.44764 17 8.99992 16.5523 8.99992 16Z"></path>
               </svg>
             </button>
           </div>

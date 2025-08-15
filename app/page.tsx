@@ -37,7 +37,7 @@ const HomePage = () => {
     );
   };
 
-  const handleSendMessage = async (message: string, model: string) => {
+  const handleSendMessage = async (message: string) => {
     addMessage(message, true);
 
     try {
