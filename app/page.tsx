@@ -43,7 +43,8 @@ const HomePage = () => {
     try {
       const aiMessage = addMessage("", false);
       console.log("Starting AI response generation...");
-      const stream = await generateOpenAIText(message);
+      const userId = "user-" + Date.now();
+      const stream = await generateOpenAIText(message, userId);
 
       const reader = stream.getReader();
       const decoder = new TextDecoder();
