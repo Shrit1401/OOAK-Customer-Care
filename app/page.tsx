@@ -1,5 +1,6 @@
 "use client";
 import BottomChatBar from "@/components/BottomChatBar";
+import LoadingIndicator from "@/components/LoadingIndicator";
 import { generateOpenAIText } from "@/lib/ai/chat.server";
 import React, { useState } from "react";
 
@@ -19,6 +20,7 @@ const HomePage = () => {
       timestamp: new Date(),
     },
   ]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const addMessage = (content: string, isUser: boolean) => {
     const newMessage: Message = {
@@ -31,43 +33,24 @@ const HomePage = () => {
     return newMessage;
   };
 
-  const updateMessage = (id: string, content: string) => {
-    setMessages((prev) =>
-      prev.map((msg) => (msg.id === id ? { ...msg, content } : msg))
-    );
-  };
-
   const handleSendMessage = async (message: string) => {
     addMessage(message, true);
+    setIsLoading(true);
 
     try {
-      const aiMessage = addMessage("", false);
       console.log("Starting AI response generation...");
       const userId = "user-" + Date.now();
-      const stream = await generateOpenAIText(message, userId);
+      const aiResponse = await generateOpenAIText(message, userId);
 
-      const reader = stream.getReader();
-      const decoder = new TextDecoder();
-      let accumulatedContent = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          console.log("Stream completed");
-          break;
-        }
-
-        const chunk = decoder.decode(value);
-        console.log("Received chunk:", chunk);
-        accumulatedContent += chunk;
-        updateMessage(aiMessage.id, accumulatedContent);
-      }
+      addMessage(aiResponse, false);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error generating AI response:", error);
       addMessage(
         "Sorry, I encountered an error while processing your request. Please try again.",
         false
       );
+      setIsLoading(false);
     }
   };
 
@@ -91,9 +74,16 @@ const HomePage = () => {
               </div>
             </div>
           ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="max-w-[85%] rounded-2xl px-4 py-3 text-gray-200">
+                <LoadingIndicator />
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      <BottomChatBar onSendMessage={handleSendMessage} />
+      <BottomChatBar onSendMessage={handleSendMessage} isLoading={isLoading} />
     </div>
   );
 };

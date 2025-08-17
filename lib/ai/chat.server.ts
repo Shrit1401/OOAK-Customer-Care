@@ -2,7 +2,8 @@
 
 import OpenAI from "openai";
 import { systemPrompts } from "./prompt";
-import { getRelevantMemory, saveMessage, getMemoryStats } from "../memory";
+import { getRelevantMemory, saveMessage } from "../chroma/memory";
+import { addMessage } from "../db/message.server";
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_SECRET,
@@ -11,9 +12,7 @@ const client = new OpenAI({
 export const generateOpenAIText = async (query: string, userId: string) => {
   const relevantMemory = await getRelevantMemory(query, 10);
 
-  console.log("🔍 Retrieved memories:", relevantMemory);
-
-  const stream = await client.chat.completions.create({
+  const response = await client.chat.completions.create({
     model: "gpt-3.5-turbo",
     messages: [
       {
@@ -31,7 +30,6 @@ export const generateOpenAIText = async (query: string, userId: string) => {
         content: query,
       },
     ],
-    stream: true,
   });
 
   await saveMessage(userId, query, {
@@ -39,30 +37,18 @@ export const generateOpenAIText = async (query: string, userId: string) => {
     tags: ["user-input", "question"],
   });
 
-  return new ReadableStream({
-    async start(controller) {
-      try {
-        let fullResponse = "";
-        for await (const chunk of stream) {
-          const content = chunk.choices[0]?.delta?.content;
-          if (content) {
-            fullResponse += content;
-            controller.enqueue(new TextEncoder().encode(content));
-          }
-        }
+  await addMessage(query, "USER");
 
-        if (fullResponse) {
-          await saveMessage("ai", fullResponse, {
-            tokens: fullResponse.length,
-            tags: ["ai-response", "generated"],
-          });
-        }
+  const aiResponse = response.choices[0]?.message?.content || "";
 
-        controller.close();
-      } catch (error) {
-        console.error("Streaming error:", error);
-        controller.error(error);
-      }
-    },
-  });
+  if (aiResponse) {
+    await saveMessage("ai", aiResponse, {
+      tokens: aiResponse.length,
+      tags: ["ai-response", "generated"],
+    });
+
+    await addMessage(aiResponse, "ASSISTANT");
+  }
+
+  return aiResponse;
 };

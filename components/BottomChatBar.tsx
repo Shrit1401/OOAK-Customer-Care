@@ -5,9 +5,13 @@ import { CornerRightUp } from "lucide-react";
 
 interface BottomChatBarProps {
   onSendMessage?: (message: string) => void;
+  isLoading?: boolean;
 }
 
-const BottomChatBar = ({ onSendMessage }: BottomChatBarProps) => {
+const BottomChatBar = ({
+  onSendMessage,
+  isLoading = false,
+}: BottomChatBarProps) => {
   const [message, setMessage] = useState("");
   const { state, isMobile } = useSidebar();
 
@@ -39,13 +43,14 @@ const BottomChatBar = ({ onSendMessage }: BottomChatBarProps) => {
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Send a message"
-            className="flex-1 bg-transparent text-gray-200 placeholder-gray-400 outline-none resize-none min-h-[60px]"
+            disabled={isLoading}
+            className="flex-1 bg-transparent text-gray-200 placeholder-gray-400 outline-none resize-none min-h-[60px] disabled:opacity-50 disabled:cursor-not-allowed"
           />
 
           <div className="flex items-center justify-end">
             <button
               onClick={handleSendMessage}
-              disabled={!message.trim()}
+              disabled={!message.trim() || isLoading}
               className="bg-white text-black hover:bg-gray-200 disabled:bg-[#373737] disabled:text-white disabled:cursor-not-allowed p-2 rounded-full transition-colors"
             >
               <svg

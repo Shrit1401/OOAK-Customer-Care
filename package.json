@@ -6,10 +6,12 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "postinstall": "prisma generate",
     "lint": "next lint"
   },
   "dependencies": {
     "@chroma-core/default-embed": "^0.1.8",
+    "@prisma/client": "^6.14.0",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
@@ -20,6 +22,7 @@
     "lucide-react": "^0.539.0",
     "next": "15.4.6",
     "openai": "^5.12.2",
+    "prisma": "^6.14.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "tailwind-merge": "^3.3.1"
