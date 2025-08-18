@@ -1,19 +1,18 @@
 "use server";
 
-import OpenAI from "openai";
+import axios from "axios";
 import { systemPrompts } from "./prompt";
 import { getRelevantMemory, saveMessage } from "../chroma/memory";
 import { addMessage, markImportant } from "../db/message.server";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_SECRET,
-});
+const OLLAMA_URL = "http://localhost:11434";
+const OLLAMA_MODEL = "gpt-oss:20b";
 
 export const generateOpenAIText = async (query: string, userId: string) => {
   const relevantMemory = await getRelevantMemory(query, 10);
 
-  const response = await client.chat.completions.create({
-    model: "gpt-3.5-turbo",
+  const response = await axios.post(`${OLLAMA_URL}/api/chat`, {
+    model: OLLAMA_MODEL,
     messages: [
       {
         role: "system",
@@ -30,6 +29,7 @@ export const generateOpenAIText = async (query: string, userId: string) => {
         content: query,
       },
     ],
+    stream: false,
   });
 
   await saveMessage(userId, query, {
@@ -40,8 +40,8 @@ export const generateOpenAIText = async (query: string, userId: string) => {
   await addMessage(query, "USER");
 
   try {
-    const extraction = await client.chat.completions.create({
-      model: "gpt-3.5-turbo",
+    const extraction = await axios.post(`${OLLAMA_URL}/api/chat`, {
+      model: OLLAMA_MODEL,
       temperature: 0,
       messages: [
         {
@@ -51,11 +51,13 @@ export const generateOpenAIText = async (query: string, userId: string) => {
         },
         { role: "user", content: query },
       ],
-      response_format: { type: "json_object" as any },
-      max_tokens: 200,
+      format: "json",
+      stream: false,
     });
 
-    const raw = extraction.choices[0]?.message?.content || "";
+    console.log(extraction.data);
+
+    const raw = extraction.data?.message?.content || "";
     const parsed = JSON.parse(raw || "{}");
     if (parsed && parsed.action && parsed.action !== "none") {
       await markImportant(parsed.summary || query, {
@@ -67,8 +69,8 @@ export const generateOpenAIText = async (query: string, userId: string) => {
   } catch (err) {
     console.error("extraction_failed", err);
   }
-
-  const aiResponse = response.choices[0]?.message?.content || "";
+  console.log(response.data);
+  const aiResponse = response.data?.message?.content || "";
 
   if (aiResponse) {
     await saveMessage("ai", aiResponse, {
@@ -84,8 +86,8 @@ export const generateOpenAIText = async (query: string, userId: string) => {
 
 export const summarizeText = async (text: string): Promise<string> => {
   try {
-    const response = await client.chat.completions.create({
-      model: "gpt-3.5-turbo",
+    const response = await axios.post(`${OLLAMA_URL}/api/chat`, {
+      model: OLLAMA_MODEL,
       messages: [
         {
           role: "system",
@@ -97,11 +99,13 @@ export const summarizeText = async (text: string): Promise<string> => {
           content: text,
         },
       ],
-      max_tokens: 150,
       temperature: 0.3,
+      stream: false,
     });
 
-    return response.choices[0]?.message?.content || text;
+    console.log(response.data);
+
+    return response.data?.message?.content || text;
   } catch (error) {
     console.error("Failed to summarize text:", error);
     return text;

@@ -1,7 +1,6 @@
-import { withAccelerate } from "@prisma/extension-accelerate";
 import { PrismaClient } from "../../lib/generated/prisma";
 
-const prisma = new PrismaClient().$extends(withAccelerate());
+const prisma = new PrismaClient();
 
 const globalForPrisma = global as unknown as { prisma: typeof prisma };
 
