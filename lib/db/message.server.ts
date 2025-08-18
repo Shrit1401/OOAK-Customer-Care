@@ -13,3 +13,15 @@ export const addMessage = async (
     },
   });
 };
+
+export const markImportant = async (
+  content: string,
+  metadata?: Record<string, unknown>
+) => {
+  await prisma.important.create({
+    data: {
+      content,
+      metadata: metadata ? (metadata as unknown as any) : undefined,
+    },
+  });
+};

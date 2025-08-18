@@ -1,5 +1,6 @@
 import client from "./chroma";
 import { embedText } from "./embeddings";
+import { summarizeText } from "../ai/chat.server";
 
 const COLLECTION_NAME = "chat_memory";
 
@@ -73,20 +74,16 @@ export async function saveMessage(
         },
       ],
     });
-
-    console.log("💾 Memory saved:", {
-      name: `Message from ${userId}`,
-      memory: `${message.substring(0, 50)}...`,
-      timestamp: new Date(timestamp).toISOString(),
-      conversationId: memoryEntry.metadata.conversationId,
-      messageType: memoryEntry.messageType,
-    });
   } catch (error) {
     console.error("Failed to save message:", error);
   }
 }
 
-export async function getRelevantMemory(message: string, k: number = 5) {
+export async function getRelevantMemory(
+  message: string,
+  k: number = 5,
+  maxLength: number = 500
+) {
   try {
     const collection = await initCollection();
     if (!collection) {
@@ -126,98 +123,19 @@ export async function getRelevantMemory(message: string, k: number = 5) {
       }
     });
 
-    console.log("🔍 Relevant memories found:", {
-      name: `Query: ${message.substring(0, 30)}...`,
-      memory: `${relevantMemories.length} relevant memories`,
-      topRelevance: relevantMemories[0]?.relevanceScore?.toFixed(3) || "N/A",
-    });
+    const processedMemories = await Promise.all(
+      relevantMemories.map(async (memory) => {
+        if (memory.content.length > maxLength) {
+          const summarized = await summarizeText(memory.content);
+          return summarized;
+        }
+        return memory.content;
+      })
+    );
 
-    return relevantMemories.map((m) => m.content);
+    return processedMemories;
   } catch (error) {
     console.error("Failed to get relevant memory:", error);
-    return [];
-  }
-}
-
-export async function getMemoryStats() {
-  try {
-    const collection = await initCollection();
-    if (!collection) return null;
-
-    const count = await collection.count();
-    const peek = await collection.peek({ limit: 10 });
-
-    const stats = {
-      totalMessages: count,
-      recentMessages: peek.ids?.length || 0,
-      sampleData: peek.documents?.slice(0, 3).map((doc) => {
-        try {
-          const parsed = JSON.parse(doc || "");
-          return {
-            name: `Message from ${parsed.userId}`,
-            memory: parsed.content.substring(0, 100) + "...",
-            timestamp: new Date(parsed.timestamp).toISOString(),
-            messageType: parsed.messageType,
-          };
-        } catch {
-          return {
-            name: "Unknown",
-            memory: (doc || "").substring(0, 100) + "...",
-          };
-        }
-      }),
-    };
-
-    console.log("📊 Memory Stats:", stats);
-    return stats;
-  } catch (error) {
-    console.error("Failed to get memory stats:", error);
-    return null;
-  }
-}
-
-export async function getConversationHistory(
-  conversationId?: string,
-  limit: number = 20
-) {
-  try {
-    const collection = await initCollection();
-    if (!collection) return [];
-
-    const where = conversationId ? { conversationId } : undefined;
-    const results = await collection.query({
-      queryTexts: [""],
-      nResults: limit,
-      where,
-    });
-
-    const conversations =
-      results.documents?.[0]
-        ?.map((doc) => {
-          try {
-            return JSON.parse(doc || "");
-          } catch {
-            return null;
-          }
-        })
-        .filter(Boolean) || [];
-
-    console.log("💬 Conversation history:", {
-      name: conversationId || "All conversations",
-      memory: `${conversations.length} messages retrieved`,
-      timeRange:
-        conversations.length > 0
-          ? `${new Date(
-              conversations[0].timestamp
-            ).toISOString()} to ${new Date(
-              conversations[conversations.length - 1].timestamp
-            ).toISOString()}`
-          : "No messages",
-    });
-
-    return conversations;
-  } catch (error) {
-    console.error("Failed to get conversation history:", error);
     return [];
   }
 }

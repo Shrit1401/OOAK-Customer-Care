@@ -29,3 +29,13 @@ enum MessageRole {
   USER
   ASSISTANT
 }
+
+model Important {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  metadata  Json?
+
+  @@map("important")
+}
