@@ -8,20 +8,9 @@ import { addMessage, markImportant } from "../db/message.server";
 const OLLAMA_URL = "http://localhost:11434";
 const OLLAMA_MODEL = "gpt-oss:20b";
 
-/**
- * Returns a response object in the following format:
- * {
- *   "query": "user's input",
- *   "ai": "AI's response",
- *   "action": "action string or 'none'",
- *   "params": { ... },
- *   "summary": "short summary or ''"
- * }
- */
 export const generateOpenAIText = async (query: string, userId: string) => {
   const relevantMemory = await getRelevantMemory(query, 10);
 
-  // 1. Get AI response
   const response = await axios.post(`${OLLAMA_URL}/api/chat`, {
     model: OLLAMA_MODEL,
     messages: [
@@ -36,6 +25,10 @@ export const generateOpenAIText = async (query: string, userId: string) => {
         )}`,
       },
       {
+        role: "system",
+        content: "https://www.ooak.photography/ this is our website and this is our https://www.instagram.com/ooak.photography",
+      },
+      {
         role: "user",
         content: query,
       },
@@ -43,14 +36,12 @@ export const generateOpenAIText = async (query: string, userId: string) => {
     stream: false,
   });
 
-  // 2. Save user message
   await saveMessage(userId, query, {
     tokens: query.length,
     tags: ["user-input", "question"],
   });
   await addMessage(query, "USER");
 
-  // 3. Extract actionable data
   let action = "none";
   let params = {};
   let summary = "";
@@ -66,7 +57,6 @@ export const generateOpenAIText = async (query: string, userId: string) => {
         },
         { role: "user", content: query },
       ],
-      // Ollama ignores OpenAI's response_format but we keep the instruction above
       stream: false,
       max_tokens: 200,
     });
@@ -93,14 +83,12 @@ export const generateOpenAIText = async (query: string, userId: string) => {
     console.error("extraction_failed", err);
   }
 
-  // 4. Get AI response content
   const aiResponse =
     response.data?.message?.content ??
     response.data?.response ??
     response.data?.choices?.[0]?.message?.content ??
     "";
 
-  // 5. Save AI message
   if (aiResponse) {
     await saveMessage("ai", aiResponse, {
       tokens: aiResponse.length,
@@ -109,7 +97,6 @@ export const generateOpenAIText = async (query: string, userId: string) => {
     await addMessage(aiResponse, "ASSISTANT");
   }
 
-  // 6. Return response in desired format
   return {
     query,
     ai: aiResponse,
