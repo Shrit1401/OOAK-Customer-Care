@@ -1,19 +1,29 @@
 "use server";
 
-import OpenAI from "openai";
+import axios from "axios";
 import { systemPrompts } from "./prompt";
 import { getRelevantMemory, saveMessage } from "../chroma/memory";
 import { addMessage, markImportant } from "../db/message.server";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_SECRET,
-});
+const OLLAMA_URL = "http://localhost:11434";
+const OLLAMA_MODEL = "gpt-oss:20b";
 
+/**
+ * Returns a response object in the following format:
+ * {
+ *   "query": "user's input",
+ *   "ai": "AI's response",
+ *   "action": "action string or 'none'",
+ *   "params": { ... },
+ *   "summary": "short summary or ''"
+ * }
+ */
 export const generateOpenAIText = async (query: string, userId: string) => {
   const relevantMemory = await getRelevantMemory(query, 10);
 
-  const response = await client.chat.completions.create({
-    model: "gpt-3.5-turbo",
+  // 1. Get AI response
+  const response = await axios.post(`${OLLAMA_URL}/api/chat`, {
+    model: OLLAMA_MODEL,
     messages: [
       {
         role: "system",
@@ -30,18 +40,23 @@ export const generateOpenAIText = async (query: string, userId: string) => {
         content: query,
       },
     ],
+    stream: false,
   });
 
+  // 2. Save user message
   await saveMessage(userId, query, {
     tokens: query.length,
     tags: ["user-input", "question"],
   });
-
   await addMessage(query, "USER");
 
+  // 3. Extract actionable data
+  let action = "none";
+  let params = {};
+  let summary = "";
   try {
-    const extraction = await client.chat.completions.create({
-      model: "gpt-3.5-turbo",
+    const extraction = await axios.post(`${OLLAMA_URL}/api/chat`, {
+      model: OLLAMA_MODEL,
       temperature: 0,
       messages: [
         {
@@ -51,41 +66,63 @@ export const generateOpenAIText = async (query: string, userId: string) => {
         },
         { role: "user", content: query },
       ],
-      response_format: { type: "json_object" as any },
+      // Ollama ignores OpenAI's response_format but we keep the instruction above
+      stream: false,
       max_tokens: 200,
     });
 
-    const raw = extraction.choices[0]?.message?.content || "";
+    const raw =
+      extraction.data?.message?.content ??
+      extraction.data?.response ??
+      extraction.data?.choices?.[0]?.message?.content ??
+      "";
     const parsed = JSON.parse(raw || "{}");
-    if (parsed && parsed.action && parsed.action !== "none") {
-      await markImportant(parsed.summary || query, {
-        action: parsed.action,
-        params: parsed.params || {},
-        source: "extracted",
-      });
+    if (parsed && parsed.action) {
+      action = parsed.action;
+      params = parsed.params || {};
+      summary = parsed.summary || "";
+      if (action !== "none") {
+        await markImportant(summary || query, {
+          action,
+          params,
+          source: "extracted",
+        });
+      }
     }
   } catch (err) {
     console.error("extraction_failed", err);
   }
 
-  const aiResponse = response.choices[0]?.message?.content || "";
+  // 4. Get AI response content
+  const aiResponse =
+    response.data?.message?.content ??
+    response.data?.response ??
+    response.data?.choices?.[0]?.message?.content ??
+    "";
 
+  // 5. Save AI message
   if (aiResponse) {
     await saveMessage("ai", aiResponse, {
       tokens: aiResponse.length,
       tags: ["ai-response", "generated"],
     });
-
     await addMessage(aiResponse, "ASSISTANT");
   }
 
-  return aiResponse;
+  // 6. Return response in desired format
+  return {
+    query,
+    ai: aiResponse,
+    action,
+    params,
+    summary,
+  };
 };
 
 export const summarizeText = async (text: string): Promise<string> => {
   try {
-    const response = await client.chat.completions.create({
-      model: "gpt-3.5-turbo",
+    const response = await axios.post(`${OLLAMA_URL}/api/chat`, {
+      model: OLLAMA_MODEL,
       messages: [
         {
           role: "system",
@@ -101,7 +138,7 @@ export const summarizeText = async (text: string): Promise<string> => {
       temperature: 0.3,
     });
 
-    return response.choices[0]?.message?.content || text;
+    return response.data.choices[0]?.message?.content || text;
   } catch (error) {
     console.error("Failed to summarize text:", error);
     return text;

@@ -1,7 +1,6 @@
 "use client";
 import BottomChatBar from "@/components/BottomChatBar";
 import LoadingIndicator from "@/components/LoadingIndicator";
-import { generateOpenAIText } from "@/lib/ai/chat.server";
 import React, { useState } from "react";
 
 interface Message {
@@ -39,10 +38,16 @@ const HomePage = () => {
 
     try {
       console.log("Starting AI response generation...");
-      const userId = "user-" + Date.now();
-      const aiResponse = await generateOpenAIText(message, userId);
-
-      addMessage(aiResponse, false);
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      const aiResponse = await response.json();
+      addMessage(aiResponse.ai || "", false);
       setIsLoading(false);
     } catch (error) {
       console.error("Error generating AI response:", error);

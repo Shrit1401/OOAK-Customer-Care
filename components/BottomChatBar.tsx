@@ -1,7 +1,6 @@
 "use client";
 import React, { useState } from "react";
 import { useSidebar } from "@/components/ui/sidebar";
-import { CornerRightUp } from "lucide-react";
 
 interface BottomChatBarProps {
   onSendMessage?: (message: string) => void;
