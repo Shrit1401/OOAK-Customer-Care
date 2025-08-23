@@ -11,6 +11,7 @@ interface Message {
 }
 
 const HomePage = () => {
+  const [phone, setPhone] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -23,7 +24,7 @@ const HomePage = () => {
 
   const addMessage = (content: string, isUser: boolean) => {
     const newMessage: Message = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `${phone}_${Date.now()}`,
       content,
       isUser,
       timestamp: new Date(),
@@ -33,15 +34,22 @@ const HomePage = () => {
   };
 
   const handleSendMessage = async (message: string) => {
+    if (!phone || phone.length !== 10) {
+      addMessage(
+        "Please enter a valid 10-digit phone number before sending a message.",
+        false
+      );
+      return;
+    }
+
     addMessage(message, true);
     setIsLoading(true);
 
     try {
-      console.log("Starting AI response generation...");
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, phoneNumber: phone }),
       });
       if (!response.ok) {
         throw new Error(`Request failed with status ${response.status}`);
@@ -61,6 +69,25 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen text-gray-200">
+      <div className="fixed bg-[#222222] p-4 bottom-0 right-0 mb-3 mr-3 rounded-xl z-50">
+        <label htmlFor="phone-input" className="block text-gray-200 mb-2">
+          Enter your phone number:
+        </label>
+        <input
+          id="phone-input"
+          type="tel"
+          placeholder="e.g. 123-456-7890"
+          className="rounded-lg px-3 py-2 bg-[#373737] text-white placeholder-gray-400 outline-none w-full min-h-[44px] text-base touch-manipulation"
+          autoComplete="tel"
+          inputMode="numeric"
+          maxLength={10}
+          value={phone}
+          onChange={(e) => {
+            const value = e.target.value.replace(/\D/g, "");
+            setPhone(value.slice(0, 10));
+          }}
+        />
+      </div>
       <div className="max-w-4xl mx-auto pt-4 pb-32 mb-16">
         <div className="space-y-6">
           {messages.map((message) => (

@@ -1,9 +1,14 @@
 import { NextRequest } from "next/server";
 import { generateOpenAIText } from "@/lib/ai/chat.server";
 
+// Helper function to validate phone number format
+function validatePhoneNumber(phoneNumber: string): boolean {
+  return /^\d{10}$/.test(phoneNumber);
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { message, userId } = await req.json();
+    const { message, phoneNumber } = await req.json();
 
     if (!message || typeof message !== "string") {
       return new Response(
@@ -12,10 +17,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const effectiveUserId =
-      typeof userId === "string" && userId.trim() ? userId : `user-${Date.now()}`;
+    if (!phoneNumber || typeof phoneNumber !== "string") {
+      return new Response(
+        JSON.stringify({ error: "'phoneNumber' is required and must be a string" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
-    const result = await generateOpenAIText(message, effectiveUserId);
+    // Validate phone number format
+    if (!validatePhoneNumber(phoneNumber)) {
+      return new Response(
+        JSON.stringify({ error: "Phone number must be exactly 10 digits" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const result = await generateOpenAIText(message, phoneNumber);
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { "Content-Type": "application/json" },

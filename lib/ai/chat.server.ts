@@ -4,12 +4,14 @@ import axios from "axios";
 import { systemPrompts } from "./prompt";
 import { getRelevantMemory, saveMessage } from "../chroma/memory";
 import { addMessage, markImportant } from "../db/message.server";
+import { getContext } from "../chroma/context";
 
 const OLLAMA_URL = "http://localhost:11434";
 const OLLAMA_MODEL = "gpt-oss:20b";
 
-export const generateOpenAIText = async (query: string, userId: string) => {
-  const relevantMemory = await getRelevantMemory(query, 10);
+export const generateOpenAIText = async (query: string, phoneNumber: string) => {
+  const relevantMemory = await getRelevantMemory(query, phoneNumber, 10);
+  const relevantContext = await getContext(phoneNumber: phoneNumber)
 
   const response = await axios.post(`${OLLAMA_URL}/api/chat`, {
     model: OLLAMA_MODEL,
@@ -26,18 +28,21 @@ export const generateOpenAIText = async (query: string, userId: string) => {
       },
       {
         role: "system",
+        content: `These are some context for you. ${relevantContext}`
+      },
+      {
+        role: "system",
         content: "https://www.ooak.photography/ this is our website and this is our https://www.instagram.com/ooak.photography",
       },
-      
       {
         role: "user",
         content: query,
-      },
+      }
     ],
     stream: false,
   });
 
-  await saveMessage(userId, query, {
+  await saveMessage(phoneNumber, query, {
     tokens: query.length,
     tags: ["user-input", "question"],
   });
@@ -126,7 +131,10 @@ export const summarizeText = async (text: string): Promise<string> => {
       temperature: 0.3,
     });
 
-    return response.data.choices[0]?.message?.content || text;
+    return response.data?.message?.content ??
+           response.data?.response ??
+           response.data?.choices?.[0]?.message?.content ??
+           text;
   } catch (error) {
     console.error("Failed to summarize text:", error);
     return text;

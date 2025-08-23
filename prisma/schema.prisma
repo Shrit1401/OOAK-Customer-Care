@@ -18,6 +18,7 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
+  phoneNumber    String    @default("9667271155")
   avatar    String?
   bio       String?
   createdAt DateTime @default(now())
@@ -35,6 +36,7 @@ model Category {
   name        String   @unique
   description String?
   color       String?
+  phoneNumber      String    @default("9667271155")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
@@ -47,6 +49,7 @@ model Category {
 model Post {
   id         String   @id @default(cuid())
   title      String
+  phoneNumber    String    @default("9667271155")
   content    String
   published  Boolean  @default(false)
   createdAt  DateTime @default(now())
@@ -65,6 +68,7 @@ model Post {
 model Comment {
   id        String   @id @default(cuid())
   content   String
+  phoneNumber    String    @default("9667271155")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
@@ -80,6 +84,7 @@ model Comment {
 model Message {
   id        String      @id @default(cuid())
   content   String
+  phoneNumber    String    @default("9667271155")
   role      MessageRole
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
@@ -96,6 +101,7 @@ enum MessageRole {
 model Important {
   id        String   @id @default(cuid())
   content   String
+  phoneNumber    String    @default("9667271155")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   metadata  Json?

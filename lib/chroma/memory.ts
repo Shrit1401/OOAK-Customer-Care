@@ -7,7 +7,7 @@ const COLLECTION_NAME = "chat_memory";
 interface MemoryEntry {
   id: string;
   content: string;
-  userId: string;
+  phoneNumber: string; 
   timestamp: number;
   messageType: "user" | "ai";
   metadata: {
@@ -19,11 +19,17 @@ interface MemoryEntry {
   };
 }
 
+// Helper function to validate phone number format
+function validatePhoneNumber(phoneNumber: string): boolean {
+  // Basic validation for 10-digit phone numbers
+  return /^\d{10}$/.test(phoneNumber);
+}
+
 export async function initCollection() {
   try {
     const collection = await client.getOrCreateCollection({
       name: COLLECTION_NAME,
-      metadata: { description: "Stores chat history" },
+      metadata: { description: "Stores chat history by phone number" },
     });
     return collection;
   } catch (error) {
@@ -33,11 +39,17 @@ export async function initCollection() {
 }
 
 export async function saveMessage(
-  userId: string,
+  phoneNumber: string, // Changed parameter from userId to phoneNumber
   message: string,
   metadata?: Partial<MemoryEntry["metadata"]>
 ) {
   try {
+    // Validate phone number
+    if (!validatePhoneNumber(phoneNumber)) {
+      console.error("Invalid phone number format:", phoneNumber);
+      return;
+    }
+
     const collection = await initCollection();
     if (!collection) {
       console.warn("ChromaDB not available, skipping message save");
@@ -46,17 +58,17 @@ export async function saveMessage(
 
     const embedding = await embedText(message);
     const timestamp = Date.now();
-    const id = timestamp.toString();
+    const id = `${phoneNumber}_${timestamp}`; // Create unique ID with phone number prefix
 
     const memoryEntry: MemoryEntry = {
       id,
       content: message,
-      userId,
+      phoneNumber, // Use phone number instead of userId
       timestamp,
-      messageType: userId === "ai" ? "ai" : "user",
+      messageType: phoneNumber === "ai" ? "ai" : "user",
       metadata: {
         embeddingModel: "text-embedding-3-small",
-        conversationId: `conv_${Math.floor(timestamp / 86400000)}`,
+        conversationId: `conv_${phoneNumber}_${Math.floor(timestamp / 86400000)}`,
         ...metadata,
       },
     };
@@ -67,7 +79,7 @@ export async function saveMessage(
       documents: [JSON.stringify(memoryEntry)],
       metadatas: [
         {
-          userId,
+          phoneNumber, // Store phone number in metadata
           messageType: memoryEntry.messageType,
           timestamp: memoryEntry.timestamp,
           conversationId: memoryEntry.metadata.conversationId || null,
@@ -81,10 +93,17 @@ export async function saveMessage(
 
 export async function getRelevantMemory(
   message: string,
+  phoneNumber: string, // Add phone number parameter to filter by user
   k: number = 5,
   maxLength: number = 500
 ) {
   try {
+    // Validate phone number
+    if (!validatePhoneNumber(phoneNumber)) {
+      console.error("Invalid phone number format:", phoneNumber);
+      return [];
+    }
+
     const collection = await initCollection();
     if (!collection) {
       console.warn("ChromaDB not available, returning empty memory");
@@ -93,9 +112,13 @@ export async function getRelevantMemory(
 
     const embedding = await embedText(message);
 
+    // Query with phone number filter
     const results = await collection.query({
       queryEmbeddings: [embedding],
-      nResults: k,
+      nResults: k * 2, // Get more results to filter by phone number
+      where: {
+        phoneNumber: phoneNumber, // Filter by phone number
+      },
     });
 
     const documents = results.documents?.[0] || [];
@@ -106,7 +129,7 @@ export async function getRelevantMemory(
         const parsed = JSON.parse(doc || "");
         return {
           content: parsed.content,
-          userId: parsed.userId,
+          phoneNumber: parsed.phoneNumber, // Use phone number instead of userId
           timestamp: parsed.timestamp,
           messageType: parsed.messageType,
           relevanceScore: distances[index] ? 1 - distances[index] : 0,
@@ -114,7 +137,7 @@ export async function getRelevantMemory(
       } catch {
         return {
           content: doc || "",
-          userId: "unknown",
+          phoneNumber: "unknown",
           timestamp: Date.now(),
           messageType: "user",
           relevanceScore: 0,
@@ -122,8 +145,13 @@ export async function getRelevantMemory(
       }
     });
 
+    // Sort by relevance score and take top k
+    const sortedMemories = relevantMemories
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+      .slice(0, k);
+
     const processedMemories = await Promise.all(
-      relevantMemories.map(async (memory) => {
+      sortedMemories.map(async (memory) => {
         if (memory.content.length > maxLength) {
           const summarized = await summarizeText(memory.content);
           return summarized;
@@ -136,6 +164,95 @@ export async function getRelevantMemory(
   } catch (error) {
     console.error("Failed to get relevant memory:", error);
     return [];
+  }
+}
+
+// New function to get all messages for a specific phone number
+export async function getUserMessages(phoneNumber: string, limit: number = 50) {
+  try {
+    // Validate phone number
+    if (!validatePhoneNumber(phoneNumber)) {
+      console.error("Invalid phone number format:", phoneNumber);
+      return [];
+    }
+
+    const collection = await initCollection();
+    if (!collection) {
+      console.warn("ChromaDB not available, returning empty messages");
+      return [];
+    }
+
+    const results = await collection.get({
+      where: {
+        phoneNumber: phoneNumber,
+      },
+      limit: limit,
+    });
+
+    const documents = results.documents || [];
+    const metadatas = results.metadatas || [];
+
+    return documents.map((doc, index) => {
+      try {
+        const parsed = JSON.parse(doc || "");
+        return {
+          content: parsed.content,
+          phoneNumber: parsed.phoneNumber,
+          timestamp: parsed.timestamp,
+          messageType: parsed.messageType,
+          metadata: metadatas[index] || {},
+        };
+      } catch {
+        return {
+          content: doc || "",
+          phoneNumber: phoneNumber,
+          timestamp: Date.now(),
+          messageType: "user",
+          metadata: {},
+        };
+      }
+    }).sort((a, b) => a.timestamp - b.timestamp); // Sort by timestamp
+  } catch (error) {
+    console.error("Failed to get user messages:", error);
+    return [];
+  }
+}
+
+// New function to delete all messages for a specific phone number
+export async function deleteUserMessages(phoneNumber: string) {
+  try {
+    // Validate phone number
+    if (!validatePhoneNumber(phoneNumber)) {
+      console.error("Invalid phone number format:", phoneNumber);
+      return false;
+    }
+
+    const collection = await initCollection();
+    if (!collection) {
+      console.warn("ChromaDB not available, cannot delete messages");
+      return false;
+    }
+
+    // Get all IDs for the phone number
+    const results = await collection.get({
+      where: {
+        phoneNumber: phoneNumber,
+      },
+    });
+
+    const ids = results.ids || [];
+    
+    if (ids.length > 0) {
+      await collection.delete({
+        ids: ids,
+      });
+      console.log(`Deleted ${ids.length} messages for phone number: ${phoneNumber}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Failed to delete user messages:", error);
+    return false;
   }
 }
 

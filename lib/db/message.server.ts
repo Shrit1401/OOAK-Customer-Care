@@ -26,13 +26,33 @@ export const markImportant = async (
   });
 };
 
-export const getContextUser = async () => {
+export const getContextUser = async (phoneNumber: string) => {
   const [users, posts, importants, categories, comments] = await Promise.all([
-    prisma.user.findMany(),
-    prisma.post.findMany(),
-    prisma.important.findMany(),
-    prisma.category.findMany(),
-    prisma.comment.findMany(),
+    prisma.user.findMany({
+      where: {
+        phoneNumber: phoneNumber
+      }
+    }),
+    prisma.post.findMany({
+      where: {
+        phoneNumber: phoneNumber
+      }
+    }),,
+    prisma.important.findMany({
+      where: {
+        phoneNumber: phoneNumber
+      }
+    }),,
+    prisma.category.findMany({
+      where: {
+        phoneNumber: phoneNumber
+      }
+    }),,
+    prisma.comment.findMany({
+      where: {
+        phoneNumber: phoneNumber
+      }
+    }),,
   ]);
 
   return {
