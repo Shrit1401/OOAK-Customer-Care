@@ -25,3 +25,21 @@ export const markImportant = async (
     },
   });
 };
+
+export const getContextUser = async () => {
+  const [users, posts, importants, categories, comments] = await Promise.all([
+    prisma.user.findMany(),
+    prisma.post.findMany(),
+    prisma.important.findMany(),
+    prisma.category.findMany(),
+    prisma.comment.findMany(),
+  ]);
+
+  return {
+    users,
+    posts,
+    importants,
+    categories,
+    comments,
+  };
+};

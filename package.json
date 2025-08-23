@@ -5,11 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start",
-    "postinstall": "prisma generate",
-    "lint": "next lint",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma migrate reset && npm run db:seed"
+    "start": "next start"
+    
   },
   "dependencies": {
     "@chroma-core/default-embed": "^0.1.8",

@@ -99,7 +99,6 @@ export async function getRelevantMemory(
     });
 
     const documents = results.documents?.[0] || [];
-    const metadatas = results.metadatas?.[0] || [];
     const distances = results.distances?.[0] || [];
 
     const relevantMemories = documents.map((doc, index) => {
@@ -139,3 +138,4 @@ export async function getRelevantMemory(
     return [];
   }
 }
+

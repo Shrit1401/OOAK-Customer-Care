@@ -28,6 +28,7 @@ export const generateOpenAIText = async (query: string, userId: string) => {
         role: "system",
         content: "https://www.ooak.photography/ this is our website and this is our https://www.instagram.com/ooak.photography",
       },
+      
       {
         role: "user",
         content: query,
