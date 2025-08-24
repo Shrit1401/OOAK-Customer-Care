@@ -10,11 +10,11 @@ export async function getContext(
 
         // Combine all context data into a single array
         const allContext = [
-            ...users.map(user => `User: ${JSON.stringify(user)}`),
-            ...posts.map(post => `Post: ${JSON.stringify(post)}`),
-            ...importants.map(important => `Important: ${JSON.stringify(important)}`),
-            ...categories.map(category => `Category: ${JSON.stringify(category)}`),
-            ...comments.map(comment => `Comment: ${JSON.stringify(comment)}`)
+            ...users.map((user: any) => `User: ${JSON.stringify(user)}`),
+            ...posts.map((post: any) => `Post: ${JSON.stringify(post)}`),
+            ...importants.map((important: any) => `Important: ${JSON.stringify(important)}`),
+            ...categories.map((category: any) => `Category: ${JSON.stringify(category)}`),
+            ...comments.map((comment: any) => `Comment: ${JSON.stringify(comment)}`)
         ];
 
         // Slice to k items

@@ -11,10 +11,11 @@ const OLLAMA_MODEL = "gpt-oss:20b";
 
 export const generateOpenAIText = async (query: string, phoneNumber: string) => {
   const relevantMemory = await getRelevantMemory(query, phoneNumber, 10);
-  const relevantContext = await getContext(phoneNumber: phoneNumber)
+  const relevantContext = await getContext(10, phoneNumber)
 
   const response = await axios.post(`${OLLAMA_URL}/api/chat`, {
     model: OLLAMA_MODEL,
+    temperature: 0.7,
     messages: [
       {
         role: "system",
@@ -46,7 +47,7 @@ export const generateOpenAIText = async (query: string, phoneNumber: string) => 
     tokens: query.length,
     tags: ["user-input", "question"],
   });
-  await addMessage(query, "USER");
+  await addMessage(query, "USER", phoneNumber);
 
   let action = "none";
   let params = {};
@@ -59,7 +60,7 @@ export const generateOpenAIText = async (query: string, phoneNumber: string) => 
         {
           role: "system",
           content:
-            'Extract the minimal actionable data from the user\'s message as strict JSON. If it is a request that should be carried forward (e.g., rescheduling, cancellations, changes), return a compact JSON with fields: action (string, lowercase verb), params (object), summary (short string). If not actionable, return {"action":"none","params":{},"summary":""}. Do not include any extra text.',
+            'You must respond with ONLY valid JSON. Extract the minimal actionable data from the user\'s message. If it is a request that should be carried forward (e.g., rescheduling, cancellations, changes), return: {"action":"verb","params":{},"summary":"text"}. If not actionable, return: {"action":"none","params":{},"summary":""}. No other text, only JSON.',
         },
         { role: "user", content: query },
       ],
@@ -72,13 +73,27 @@ export const generateOpenAIText = async (query: string, phoneNumber: string) => 
       extraction.data?.response ??
       extraction.data?.choices?.[0]?.message?.content ??
       "";
-    const parsed = JSON.parse(raw || "{}");
+    
+    // Clean the response to extract only JSON
+    let jsonString = raw.trim();
+    // Remove any text before the first {
+    const firstBrace = jsonString.indexOf('{');
+    if (firstBrace > 0) {
+      jsonString = jsonString.substring(firstBrace);
+    }
+    // Remove any text after the last }
+    const lastBrace = jsonString.lastIndexOf('}');
+    if (lastBrace > 0 && lastBrace < jsonString.length - 1) {
+      jsonString = jsonString.substring(0, lastBrace + 1);
+    }
+    
+    const parsed = JSON.parse(jsonString || "{}");
     if (parsed && parsed.action) {
       action = parsed.action;
       params = parsed.params || {};
       summary = parsed.summary || "";
       if (action !== "none") {
-        await markImportant(summary || query, {
+        await markImportant(summary || query, phoneNumber, {
           action,
           params,
           source: "extracted",
@@ -87,6 +102,7 @@ export const generateOpenAIText = async (query: string, phoneNumber: string) => 
     }
   } catch (err) {
     console.error("extraction_failed", err);
+    // Continue with default values if extraction fails
   }
 
   const aiResponse =
@@ -100,7 +116,7 @@ export const generateOpenAIText = async (query: string, phoneNumber: string) => 
       tokens: aiResponse.length,
       tags: ["ai-response", "generated"],
     });
-    await addMessage(aiResponse, "ASSISTANT");
+    await addMessage(aiResponse, "ASSISTANT", phoneNumber);
   }
 
   return {

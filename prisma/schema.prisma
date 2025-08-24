@@ -36,7 +36,7 @@ model Category {
   name        String   @unique
   description String?
   color       String?
-  phoneNumber      String    @default("9667271155")
+  phoneNumber      String    
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   

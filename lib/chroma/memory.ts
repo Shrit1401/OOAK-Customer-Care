@@ -21,8 +21,8 @@ interface MemoryEntry {
 
 // Helper function to validate phone number format
 function validatePhoneNumber(phoneNumber: string): boolean {
-  // Basic validation for 10-digit phone numbers
-  return /^\d{10}$/.test(phoneNumber);
+  // Allow "ai" as a special case for AI messages, or 10-digit phone numbers
+  return phoneNumber === "ai" || /^\d{10}$/.test(phoneNumber);
 }
 
 export async function initCollection() {

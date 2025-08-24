@@ -4,23 +4,27 @@ import prisma from "./prisma";
 
 export const addMessage = async (
   content: string,
-  role: "USER" | "ASSISTANT"
+  role: "USER" | "ASSISTANT",
+  phoneNumber: string
 ) => {
   await prisma.message.create({
     data: {
       content,
       role,
+      phoneNumber,
     },
   });
 };
 
 export const markImportant = async (
   content: string,
-  metadata?: Record<string, unknown>
+  phoneNumber: string,
+  metadata?: Record<string, unknown>,
 ) => {
   await prisma.important.create({
     data: {
       content,
+      phoneNumber,
       metadata: metadata ? (metadata as unknown as any) : undefined,
     },
   });
@@ -37,22 +41,22 @@ export const getContextUser = async (phoneNumber: string) => {
       where: {
         phoneNumber: phoneNumber
       }
-    }),,
+    }),
     prisma.important.findMany({
       where: {
         phoneNumber: phoneNumber
       }
-    }),,
+    }),
     prisma.category.findMany({
       where: {
         phoneNumber: phoneNumber
       }
-    }),,
+    }),
     prisma.comment.findMany({
       where: {
         phoneNumber: phoneNumber
       }
-    }),,
+    }),
   ]);
 
   return {
